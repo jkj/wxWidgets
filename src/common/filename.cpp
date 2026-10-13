@@ -2274,7 +2274,12 @@ wxString wxFileName::GetPath( int flags, wxPathFormat format ) const
 {
     wxString fullpath = DoGetPath(flags, format);
 
-#ifdef __WINDOWS__
+    // Nostalgia Commander: a path comes back as it is spelled, never turned
+    // into the \\?\ extended form. The prefix belongs on a path only as it is
+    // handed to the system, which the application does itself (its
+    // core/win_path.h); returned from here it reaches every place a path is
+    // shown, stored, compared or resolved, and none of them accepts it.
+#if 0 // upstream: #ifdef __WINDOWS__
     // Paths have to use "extended length" form to be longer than MAX_PATH
     // under Windows, check if we need to use it.
     if ( GetFormat(format) == wxPATH_DOS && (flags & wxPATH_GET_VOLUME) )

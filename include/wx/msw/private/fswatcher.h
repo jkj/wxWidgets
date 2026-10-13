@@ -341,8 +341,13 @@ public:
         // An error is returned if the underlying directory has been deleted,
         // but this is not really an unexpected failure, so handle it
         // specially.
-        if ( err == ERROR_ACCESS_DENIED &&
-             *watch && !wxFileName::DirExists((*watch)->GetPath()) )
+        //
+        // Nostalgia Commander: whatever stands at the path now. A directory
+        // deleted and made again at once is back before this packet is read,
+        // and asking whether it exists calls that an error: the watch is
+        // dropped without a deletion being reported, so nothing re-arms it
+        // and the new directory is never watched.
+        if ( err == ERROR_ACCESS_DENIED && *watch )
             return Status_Deleted;
 
         // Some other error, at least log it.

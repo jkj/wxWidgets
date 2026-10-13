@@ -132,7 +132,21 @@ bool wxFSWatcherImplMSW::SetUpWatch(wxFSWatchEntryMSW& watch)
 
     wxLogTrace(wxTRACE_FSWATCHER, "Setting up watch for file system changes...");
 
-    return DoSetUpWatch(watch);
+    // Nostalgia Commander: a read that cannot be started again ends the watch,
+    // so say so the way a deleted directory is said. A directory being deleted
+    // refuses the new read at once, not through a completion packet, and with
+    // the failure ignored by the callers no event ever comes: the watch is dead
+    // with nobody told. Still holding the lock, so the watch is still ours.
+    if ( !DoSetUpWatch(watch) )
+    {
+        wxFileSystemWatcherEvent removeEvent(wxFSW_EVENT_DELETE,
+                                             watch.GetPath(),
+                                             wxFileName());
+        SendEvent(removeEvent);
+        return false;
+    }
+
+    return true;
 }
 
 void wxFSWatcherImplMSW::SendEvent(wxFileSystemWatcherEvent& evt)

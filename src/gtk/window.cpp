@@ -6685,7 +6685,11 @@ void wxWindowGTK::DoApplyWidgetStyle(GtkRcStyle *style)
 void wxWindowGTK::GTKApplyStyle(GtkWidget* widget, GtkRcStyle* WXUNUSED_IN_GTK3(style))
 {
 #ifdef __WXGTK3__
-    if (m_styleProvider)
+    // Nostalgia Commander: a control's sub-widget can be absent when its style
+    // is applied: a bitmap button inherits its parent's font during Create,
+    // before the image that becomes its child is added, and a static box with
+    // no caption has no label widget. GTK asserts on a null widget.
+    if (m_styleProvider && widget)
     {
         GtkStyleContext* context = gtk_widget_get_style_context(widget);
         gtk_style_context_add_provider(context,

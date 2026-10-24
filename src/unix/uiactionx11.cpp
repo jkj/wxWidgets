@@ -103,7 +103,12 @@ private:
     {
         // Simulating events too fast results in just losing them somehow, so
         // ensure that there is some minimal delay between subsequent events.
-        static int MIN_DELAY_BETWEEN_EVENTS = 20;
+        // Nostalgia Commander: 2ms, not 20. The sleep holds the main thread,
+        // and GDK hands the program one X event a pass of the main loop: a
+        // key sent from a timer whose interval is shorter than its press and
+        // release together makes the timer due on every pass, and the keys
+        // reach the program half as fast as they are sent.
+        static int MIN_DELAY_BETWEEN_EVENTS = 2;
         if ( wxGetLocalTimeMillis() < ms_lastEvent + MIN_DELAY_BETWEEN_EVENTS )
             wxMilliSleep(MIN_DELAY_BETWEEN_EVENTS);
     }

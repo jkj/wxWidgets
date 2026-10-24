@@ -1620,7 +1620,9 @@ void wxTextCtrl::SetSelection( long from, long to )
         gtk_text_buffer_get_iter_at_offset( m_buffer, &fromi, from );
         gtk_text_buffer_get_iter_at_offset( m_buffer, &toi, to );
 
-        gtk_text_buffer_select_range( m_buffer, &fromi, &toi );
+        // Nostalgia Commander: the cursor at the selection's end, as in a
+        // single-line control (wxTextEntry::SetSelection).
+        gtk_text_buffer_select_range( m_buffer, &toi, &fromi );
     }
     else // single line
     {
@@ -1730,6 +1732,12 @@ long wxTextCtrl::GetInsertionPoint() const
 
     if ( IsMultiLine() )
     {
+        // Nostalgia Commander: while there is a selection, where it starts,
+        // as in a single-line control (wxTextEntry::GetInsertionPoint).
+        GtkTextIter start, end;
+        if ( gtk_text_buffer_get_selection_bounds( m_buffer, &start, &end ) )
+            return gtk_text_iter_get_offset( &start );
+
         // There is no direct accessor for the cursor, but
         // internally, the cursor is the "mark" called
         // "insert" in the text view's btree structure.

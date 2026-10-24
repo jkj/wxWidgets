@@ -243,7 +243,9 @@ wx_gtk_insert_text_callback(GtkEditable *editable,
     {
         // We must update the position to point after the newly inserted text,
         // as expected by GTK+.
-        *position = text->GetInsertionPoint();
+        // Nostalgia Commander: the cursor itself, which GetInsertionPoint no
+        // longer is while there is a selection.
+        *position = gtk_editable_get_position(editable);
 
         g_signal_stop_emission_by_name (editable, "insert_text");
     }
@@ -767,6 +769,13 @@ void wxTextEntry::SetInsertionPoint(long pos)
 
 long wxTextEntry::GetInsertionPoint() const
 {
+    // Nostalgia Commander: while there is a selection, where it starts,
+    // wherever the cursor is, as wxMSW reports it. SetSelection leaves the
+    // cursor at the selection's end, as the native control does there.
+    gint start, end;
+    if ( gtk_editable_get_selection_bounds(GetEditable(), &start, &end) )
+        return wxMin(start, end);
+
     return gtk_editable_get_position(GetEditable());
 }
 
@@ -794,10 +803,11 @@ void wxTextEntry::SetSelection(long from, long to)
     if ( from == -1 && to == -1 )
         from = 0;
 
-    // for compatibility with MSW, exchange from and to parameters so that the
-    // insertion point is set to the start of the selection and not its end as
-    // GTK+ does by default
-    gtk_editable_select_region(GetEditable(), to, from);
+    // Nostalgia Commander: the cursor at the selection's end, as GTK+ puts it
+    // and as the native control on MSW does, so Shift and a key that moves
+    // the cursor extend the selection from its start. GetInsertionPoint still
+    // reports the start, as wxMSW does.
+    gtk_editable_select_region(GetEditable(), from, to);
 
 #ifndef __WXGTK3__
     // avoid reported problem with RHEL 5 GTK+ 2.10 where selection is reset by

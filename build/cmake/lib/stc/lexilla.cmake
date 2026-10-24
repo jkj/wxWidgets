@@ -182,6 +182,13 @@ target_include_directories(wxlexilla PRIVATE
     ${SCINTILLA_INCLUDE}
 )
 
+# Nostalgia Commander: lexlib/OptionSet.h calls atoi without including <cstdlib>, which libc++ 23 no
+# longer declares through the headers the newer lexers (Dart, Nix, Zig) include. Forced in here so
+# the lexilla submodule stays as upstream has it. MSVC's library still declares it.
+if(NOT MSVC)
+    target_compile_options(wxlexilla PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include cstdlib>")
+endif()
+
 
 wx_target_enable_precomp(wxlexilla
     "${wxSOURCE_DIR}/${SCINTILLA_SRC_DIR}/include/Scintilla.h"

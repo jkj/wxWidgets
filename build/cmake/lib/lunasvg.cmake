@@ -43,6 +43,12 @@ if(wxUSE_LUNASVG STREQUAL "ON" OR wxUSE_LUNASVG STREQUAL "builtin")
         ${wxSOURCE_DIR}/3rdparty/lunasvg/plutovg/include
         ${wxSOURCE_DIR}/3rdparty/lunasvg/plutovg/source
     )
+    # Nostalgia Commander: svgfilterelement.cpp calls strtof without including <cstdlib>, which
+    # libc++ 23 no longer declares through the headers it does include. Forced in here so the
+    # lunasvg submodule stays as upstream has it. MSVC's library still declares it.
+    if(NOT MSVC)
+        target_compile_options(wxlunasvg PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include cstdlib>")
+    endif()
 
     set(LUNASVG_LIBRARIES wxlunasvg)
     set(LUNASVG_INCLUDE_DIRS ${wxSOURCE_DIR}/3rdparty/lunasvg/include)

@@ -1847,12 +1847,17 @@ void wxTopLevelWindowGTK::GTKUpdateDecorSize(const DecorSize& decorSize)
             // update size hints, they depend on m_decorSize
             if (!m_deferShow)
             {
-                // if size hints match old size, assume hints were set to
-                // maintain current client size, and adjust hints accordingly
-                if (m_minWidth == m_width) m_minWidth += diff.x;
-                if (m_maxWidth == m_width) m_maxWidth += diff.x;
-                if (m_minHeight == m_height) m_minHeight += diff.y;
-                if (m_maxHeight == m_height) m_maxHeight += diff.y;
+                // Nostalgia Commander: the hints keep the client size they
+                // allow, whatever the size of the window. SetMinClientSize and
+                // a sizer's hints are both a client size with the decorations
+                // added, and the decorations they were added with may have
+                // been a guess: kept as they were, the real decorations would
+                // take the difference out of the client area, and the window
+                // could be made smaller than its content's minimum.
+                if (m_minWidth > 0) m_minWidth += diff.x;
+                if (m_maxWidth > 0) m_maxWidth += diff.x;
+                if (m_minHeight > 0) m_minHeight += diff.y;
+                if (m_maxHeight > 0) m_maxHeight += diff.y;
             }
             DoSetSizeHints(m_minWidth, m_minHeight, m_maxWidth, m_maxHeight, m_incWidth, m_incHeight);
         }

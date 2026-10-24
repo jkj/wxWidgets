@@ -420,6 +420,27 @@ static void wxgtk_webview_webkit_close (WebKitWebView *WXUNUSED(web_view),
     webKitCtrl->HandleWindowEvent(event);
 }
 
+// Nostalgia Commander: the keyboard followed into the web view itself. wx
+// follows it on the scrolled window wrapping the web view, which is where
+// SetFocus() puts it, but a page takes it from there into the web view: the
+// scrolled window then loses it, and FindFocus() said nothing had it. The
+// keys still reach the scrolled window only when the page passes them on.
+static gboolean wxgtk_webview_webkit_focus_in(GtkWidget *WXUNUSED(widget),
+                                              GdkEventFocus *WXUNUSED(event),
+                                              wxWebViewWebKit *webKitCtrl)
+{
+    webKitCtrl->GTKHandleFocusIn();
+    return FALSE;
+}
+
+static gboolean wxgtk_webview_webkit_focus_out(GtkWidget *WXUNUSED(widget),
+                                               GdkEventFocus *WXUNUSED(event),
+                                               wxWebViewWebKit *webKitCtrl)
+{
+    webKitCtrl->GTKHandleFocusOut();
+    return FALSE;
+}
+
 class wxReadyToShowParams
 {
 public:
@@ -982,6 +1003,12 @@ bool wxWebViewWebKit::Create(wxWindow *parent,
     m_parent->DoAddChild( this );
 
     PostCreation(size);
+
+    // Nostalgia Commander: see wxgtk_webview_webkit_focus_in().
+    g_signal_connect_after(m_web_view, "focus_in_event",
+                           G_CALLBACK(wxgtk_webview_webkit_focus_in), this);
+    g_signal_connect_after(m_web_view, "focus_out_event",
+                           G_CALLBACK(wxgtk_webview_webkit_focus_out), this);
 
     NotifyWebViewCreated();
 

@@ -1868,20 +1868,24 @@ void wxTopLevelWindowGTK::GTKUpdateDecorSize(const DecorSize& decorSize)
         // notification with wrong _NET_REQUEST_FRAME_EXTENTS values first (as
         // mutter does, at least in GNOME 3.48, where it sends 0 values for the
         // not yet mapped window).
-        if (m_deferShowAllowed)
+        // Nostalgia Commander: a window that cannot be resized was sized for
+        // what it holds, so it keeps its client size and its overall size
+        // follows the real decorations. Keeping the overall size instead puts a
+        // wrong guess at the decorations into the client area, which is how a
+        // fixed dialog fitted before its first show came out taller than its
+        // layout under a window manager whose frame extents answer differs
+        // from the frame it then draws (openbox, for a window with no resize
+        // handle).
+        if (m_deferShowAllowed && gtk_window_get_resizable(GTK_WINDOW(m_widget)))
         {
-            const bool isResizeable = gtk_window_get_resizable(GTK_WINDOW(m_widget));
-
             // keep overall size unchanged by shrinking m_widget
-            const wxSize size = GTKDoGetSize(isResizeable);
+            const wxSize size = GTKDoGetSize(true);
 
             // but not if size would be less than minimum, it won't take effect
             if (size.x >= m_minWidth - (decorSize.left + decorSize.right) &&
                 size.y >= m_minHeight - (decorSize.top + decorSize.bottom))
             {
                 gtk_window_resize(GTK_WINDOW(m_widget), size.x, size.y);
-                if (!isResizeable)
-                    gtk_widget_set_size_request(GTK_WIDGET(m_widget), size.x, size.y);
                 resized = true;
             }
         }

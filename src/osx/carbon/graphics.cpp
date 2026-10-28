@@ -38,6 +38,10 @@
     #include "wx/cocoa/dcclient.h"
 #endif
 
+#include <cmath>  // Nostalgia Commander: std::isnan, for GetPartialTextExtents
+#include <limits>
+#include <vector>
+
 #if wxOSX_USE_COCOA_OR_IPHONE
 extern CGContextRef wxOSXGetContextFromCurrentContext() ;
 #if wxOSX_USE_COCOA
@@ -2624,6 +2628,34 @@ void wxMacCoreGraphicsContext::GetPartialTextExtents(const wxString& text, wxArr
     wxCFRef<CFAttributedStringRef> attrtext( CFAttributedStringCreate(kCFAllocatorDefault, t, fref->OSXGetCTFontAttributes()) );
     wxCFRef<CTLineRef> line( CTLineCreateWithAttributedString(attrtext) );
 
+    // Nostalgia Commander: the offsets come from one walk over the line's caret
+    // positions. CTLineGetOffsetForStringIndex walks them from the line's start
+    // for each index it is asked about, so asking it for every character took
+    // time in the square of the text's length: seconds, for the runs a line of
+    // megabytes is measured in. The walk gives each character's leading edge,
+    // the offset that call returns for its index. An index the walk gives no
+    // leading edge for (inside a cluster or a ligature) and the end of the text
+    // are asked for one at a time as before, and so is every index of a line
+    // with a run going right to left, so every width is what it was.
+    const CFIndex u16length = CFAttributedStringGetLength(attrtext);
+    bool rightToLeft = false;
+    CFArrayRef runs = CTLineGetGlyphRuns(line);
+    for ( CFIndex r = 0; r < CFArrayGetCount(runs) && !rightToLeft; ++r )
+    {
+        const CTRunRef run = static_cast<CTRunRef>(CFArrayGetValueAtIndex(runs, r));
+        rightToLeft = (CTRunGetStatus(run) & kCTRunStatusRightToLeft) != 0;
+    }
+    std::vector<double> leading;
+    if ( !rightToLeft )
+    {
+        leading.assign(u16length, std::numeric_limits<double>::quiet_NaN());
+        double* const edges = leading.data();
+        CTLineEnumerateCaretOffsets(line, ^(double offset, CFIndex charIndex, bool leadingEdge, bool*) {
+            if ( leadingEdge && charIndex >= 0 && charIndex < u16length )
+                edges[charIndex] = offset;
+        });
+    }
+
     widths.reserve(text.length());
     CFIndex u16index = 1;
     for ( wxString::const_iterator iter = text.begin(); iter != text.end(); ++iter, ++u16index )
@@ -2634,7 +2666,10 @@ void wxMacCoreGraphicsContext::GetPartialTextExtents(const wxString& text, wxArr
         {
             ++u16index;
         }
-        widths.push_back( CTLineGetOffsetForStringIndex( line, u16index, nullptr ) );
+        double offset = u16index < static_cast<CFIndex>(leading.size()) ? leading[u16index] : std::numeric_limits<double>::quiet_NaN();
+        if ( std::isnan(offset) )
+            offset = CTLineGetOffsetForStringIndex( line, u16index, nullptr );
+        widths.push_back( offset );
     }
 
     CheckInvariants();

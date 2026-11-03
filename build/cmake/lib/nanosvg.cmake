@@ -7,17 +7,21 @@
 # Licence:     wxWindows licence
 #############################################################################
 
+# Nostalgia Commander: the bundled NanoSVG and its submodule are removed. ncomm-deps hands its own
+# copy over as "sys", so a NanoSVG that cannot be found stops the configure, where upstream would
+# quietly compile its own copy.
+if(wxUSE_NANOSVG STREQUAL "builtin")
+    message(FATAL_ERROR "wxUSE_NANOSVG=builtin, and this tree has no bundled NanoSVG: use sys.")
+endif()
+
 if(wxUSE_NANOSVG STREQUAL "sys")
     find_package(NanoSVG)
     if(NOT NanoSVG_FOUND)
-        # If the sys library can not be found use builtin
-        wx_option_force_value(wxUSE_NANOSVG builtin)
+        message(FATAL_ERROR "wxUSE_NANOSVG=sys, and find_package(NanoSVG) did not find NanoSVG.")
     endif()
 endif()
 
-if(wxUSE_NANOSVG STREQUAL "builtin")
-    set(wxUSE_NANOSVG_EXTERNAL 0 PARENT_SCOPE)
-elseif(wxUSE_NANOSVG)
+if(wxUSE_NANOSVG)
     set(wxUSE_NANOSVG_EXTERNAL 1 PARENT_SCOPE)
 
     set(NANOSVG_LIBRARIES )

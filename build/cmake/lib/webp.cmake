@@ -7,68 +7,17 @@
 # Licence:     wxWindows licence
 #############################################################################
 
+# Nostalgia Commander: the bundled libwebp and its submodule are removed. ncomm-deps builds libwebp
+# before wx and hands it over as "sys", so a libwebp that cannot be found stops the configure, where
+# upstream would quietly build its own copy.
+if(wxUSE_LIBWEBP STREQUAL "builtin")
+    message(FATAL_ERROR "wxUSE_LIBWEBP=builtin, and this tree has no bundled libwebp: use sys.")
+endif()
+
 if(wxUSE_LIBWEBP STREQUAL "sys")
     find_package(WebP)
     mark_as_advanced(WebP_DIR)
     if(NOT WebP_FOUND)
-        # If the sys library can not be found use builtin
-        wx_option_force_value(wxUSE_LIBWEBP builtin)
+        message(FATAL_ERROR "wxUSE_LIBWEBP=sys, and find_package(WebP) did not find libwebp.")
     endif()
-endif()
-
-if(wxUSE_LIBWEBP STREQUAL "builtin")
-    set(WEBP_ROOT "${wxSOURCE_DIR}/3rdparty/libwebp")
-    set(WEBP_BUILD_ROOT "${CMAKE_CURRENT_BINARY_DIR}/webp-build")
-
-    # No flags to enable or disable SIMD
-    set(WEBP_CHECK_SIMD       OFF CACHE BOOL "")
-    # static library
-    set(WEBP_LINK_STATIC       ON)
-    # disable tools
-    set(WEBP_BUILD_ANIM_UTILS OFF)
-    set(WEBP_BUILD_CWEBP      OFF)
-    set(WEBP_BUILD_DWEBP      OFF)
-    set(WEBP_BUILD_GIF2WEBP   OFF)
-    set(WEBP_BUILD_IMG2WEBP   OFF)
-    set(WEBP_BUILD_VWEBP      OFF)
-    set(WEBP_BUILD_WEBPINFO   OFF)
-    set(WEBP_BUILD_WEBPMUX    OFF)
-    set(WEBP_BUILD_EXTRAS     OFF)
-    set(WEBP_BUILD_WEBP_JS    OFF)
-    set(WEBP_BUILD_FUZZTEST   OFF)
-
-    # webp sets CMAKE_BUILD_TYPE if it is not defined.
-    # Multi-config generators do not need this, and might even
-    # cause confusion in cmake-gui, so unset it later.
-    if(NOT DEFINED CMAKE_BUILD_TYPE)
-        set(RESET_CMAKE_BUILD_TYPE ON)
-    endif()
-
-    add_subdirectory("${WEBP_ROOT}" "${WEBP_BUILD_ROOT}" EXCLUDE_FROM_ALL)
-
-    if(RESET_CMAKE_BUILD_TYPE)
-        unset(CMAKE_BUILD_TYPE CACHE)
-    endif()
-
-    mark_as_advanced(WEBP_CHECK_SIMD)
-    mark_as_advanced(WEBP_BITTRACE)
-    mark_as_advanced(WEBP_BUILD_LIBWEBPMUX)
-    mark_as_advanced(WEBP_ENABLE_SIMD)
-    mark_as_advanced(WEBP_ENABLE_SWAP_16BIT_CSP)
-    mark_as_advanced(WEBP_ENABLE_WUNUSED_RESULT)
-    mark_as_advanced(WEBP_LINK_STATIC)
-    mark_as_advanced(WEBP_NEAR_LOSSLESS)
-    mark_as_advanced(WEBP_UNICODE)
-    mark_as_advanced(WEBP_USE_THREAD)
-
-    set(WebP_LIBRARIES webp webpdemux sharpyuv)
-
-    get_property(webpTargets DIRECTORY "${WEBP_ROOT}" PROPERTY BUILDSYSTEM_TARGETS)
-    foreach(target_name IN LISTS webpTargets)
-        set(builtin_props)
-        if (NOT ${target_name} IN_LIST WebP_LIBRARIES)
-            set(builtin_props SKIP_INSTALL)
-        endif()
-        wx_add_builtin_library(${target_name} ${builtin_props} FOLDER "/WebP")
-    endforeach()
 endif()

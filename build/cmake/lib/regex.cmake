@@ -7,55 +7,18 @@
 # Licence:     wxWindows licence
 #############################################################################
 
+# Nostalgia Commander: the bundled PCRE2 and its submodule are removed. ncomm-deps builds PCRE2
+# before wx and hands it over as "sys", so a PCRE2 that cannot be found stops the configure, where
+# upstream would quietly build its own copy.
+if(wxUSE_REGEX STREQUAL "builtin")
+    message(FATAL_ERROR "wxUSE_REGEX=builtin, and this tree has no bundled PCRE2: use sys.")
+endif()
+
 if(wxUSE_REGEX STREQUAL "sys")
     find_package(PCRE2)
     if(NOT PCRE2_FOUND)
-        # If the sys library can not be found use builtin
-        wx_option_force_value(wxUSE_REGEX builtin)
-    else()
-        set(REGEX_LIBRARIES ${PCRE2_LIBRARIES})
-        set(REGEX_INCLUDE_DIRS ${PCRE2_INCLUDE_DIRS})
+        message(FATAL_ERROR "wxUSE_REGEX=sys, and find_package(PCRE2) did not find PCRE2.")
     endif()
-endif()
-
-if(wxUSE_REGEX STREQUAL "builtin")
-    # TODO: implement building PCRE2 via its CMake file, using
-    # add_subdirectory or ExternalProject_Add
-    wx_add_builtin_library(wxregex
-        3rdparty/pcre/src/pcre2_auto_possess.c
-        3rdparty/pcre/src/pcre2_chartables.c
-        3rdparty/pcre/src/pcre2_chkdint.c
-        3rdparty/pcre/src/pcre2_compile.c
-        3rdparty/pcre/src/pcre2_compile_cgroup.c
-        3rdparty/pcre/src/pcre2_compile_class.c
-        3rdparty/pcre/src/pcre2_config.c
-        3rdparty/pcre/src/pcre2_context.c
-        3rdparty/pcre/src/pcre2_convert.c
-        3rdparty/pcre/src/pcre2_dfa_match.c
-        3rdparty/pcre/src/pcre2_error.c
-        3rdparty/pcre/src/pcre2_extuni.c
-        3rdparty/pcre/src/pcre2_find_bracket.c
-        3rdparty/pcre/src/pcre2_jit_compile.c
-        3rdparty/pcre/src/pcre2_maketables.c
-        3rdparty/pcre/src/pcre2_match.c
-        3rdparty/pcre/src/pcre2_match_data.c
-        3rdparty/pcre/src/pcre2_match_next.c
-        3rdparty/pcre/src/pcre2_newline.c
-        3rdparty/pcre/src/pcre2_ord2utf.c
-        3rdparty/pcre/src/pcre2_pattern_info.c
-        3rdparty/pcre/src/pcre2_script_run.c
-        3rdparty/pcre/src/pcre2_serialize.c
-        3rdparty/pcre/src/pcre2_string_utils.c
-        3rdparty/pcre/src/pcre2_study.c
-        3rdparty/pcre/src/pcre2_substitute.c
-        3rdparty/pcre/src/pcre2_substring.c
-        3rdparty/pcre/src/pcre2_tables.c
-        3rdparty/pcre/src/pcre2_ucd.c
-        3rdparty/pcre/src/pcre2_valid_utf.c
-        3rdparty/pcre/src/pcre2_xclass.c
-    )
-    set(REGEX_LIBRARIES wxregex)
-    set(REGEX_INCLUDE_DIRS ${wxSOURCE_DIR}/3rdparty/pcre/src/wx)
-    target_compile_definitions(wxregex PRIVATE __WX__ HAVE_CONFIG_H)
-    target_include_directories(wxregex PRIVATE ${wxSETUP_HEADER_PATH} ${wxSOURCE_DIR}/include ${REGEX_INCLUDE_DIRS})
+    set(REGEX_LIBRARIES ${PCRE2_LIBRARIES})
+    set(REGEX_INCLUDE_DIRS ${PCRE2_INCLUDE_DIRS})
 endif()

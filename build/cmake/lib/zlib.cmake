@@ -7,45 +7,16 @@
 # Licence:     wxWindows licence
 #############################################################################
 
+# Nostalgia Commander: the bundled zlib and its submodule are removed. ncomm-deps builds zlib before
+# wx and hands it over as "sys", so a zlib that cannot be found stops the configure, where upstream
+# would quietly build its own copy.
+if(wxUSE_ZLIB STREQUAL "builtin")
+    message(FATAL_ERROR "wxUSE_ZLIB=builtin, and this tree has no bundled zlib: use sys.")
+endif()
+
 if(wxUSE_ZLIB STREQUAL "sys")
     find_package(ZLIB)
     if(NOT ZLIB_FOUND)
-        # If the sys library can not be found use builtin
-        wx_option_force_value(wxUSE_ZLIB builtin)
+        message(FATAL_ERROR "wxUSE_ZLIB=sys, and find_package(ZLIB) did not find zlib.")
     endif()
-endif()
-
-if(wxUSE_ZLIB STREQUAL "builtin")
-    # TODO: implement building zlib via its CMake file, using
-    # add_subdirectory or ExternalProject_Add
-    wx_add_builtin_library(wxzlib
-        src/zlib/adler32.c
-        src/zlib/compress.c
-        src/zlib/crc32.c
-        src/zlib/deflate.c
-        src/zlib/gzclose.c
-        src/zlib/gzlib.c
-        src/zlib/gzread.c
-        src/zlib/gzwrite.c
-        src/zlib/infback.c
-        src/zlib/inffast.c
-        src/zlib/inflate.c
-        src/zlib/inftrees.c
-        src/zlib/trees.c
-        src/zlib/uncompr.c
-        src/zlib/zutil.c
-    )
-    if(MSVC)
-        # Define this to get rid of many warnings about using open(),
-        # read() and other POSIX functions in zlib code. This is much
-        # more convenient than having to modify it to avoid them.
-        target_compile_definitions(wxzlib PRIVATE _CRT_NONSTDC_NO_WARNINGS)
-    endif()
-    # Tell our modified zconf.h to include wx/setup.h.
-    target_compile_definitions(wxzlib PRIVATE wxHAVE_SETUP_H=1)
-    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        target_compile_options(wxzlib PRIVATE -Wno-deprecated-non-prototype)
-    endif()
-    set(ZLIB_LIBRARIES wxzlib)
-    set(ZLIB_INCLUDE_DIRS ${wxSOURCE_DIR}/src/zlib)
 endif()

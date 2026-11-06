@@ -217,6 +217,12 @@ private:
     GDBusServer *m_dbusServer;
     GDBusProxy *m_extension;
 
+    // Nostalgia Commander: every RunScriptAsync() call holds this, and the
+    // destructor cancels it, so a script that finishes after the control is
+    // gone finds its call cancelled instead of a destroyed control to report
+    // to. Made on the first call, which is const.
+    mutable GCancellable *m_scriptCancellable = nullptr;
+
     static wxSharedPtr<wxWebViewHistoryItem>
     CreateHistoryItemFromWKItem(WebKitBackForwardListItem* gtkitem);
 #endif

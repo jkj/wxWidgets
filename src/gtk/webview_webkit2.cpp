@@ -999,6 +999,14 @@ bool wxWebViewWebKit::Create(wxWindow *parent,
 
 wxWebViewWebKit::~wxWebViewWebKit()
 {
+    // Nostalgia Commander: before anything else, so a pending script call
+    // finished from here on, at once or later, finds itself cancelled.
+    if (m_scriptCancellable)
+    {
+        g_cancellable_cancel(m_scriptCancellable);
+        g_clear_object(&m_scriptCancellable);
+    }
+
     if (m_web_view)
         GTKDisconnect(m_web_view);
     if (m_dbusServer)
@@ -1780,8 +1788,14 @@ wxString wxWebViewWebKit::GetPageText() const
 class wxWebKitRunScriptParams
 {
 public:
+    ~wxWebKitRunScriptParams() { g_clear_object(&cancellable); }
+
     const wxWebViewWebKit* webKitCtrl;
     void* clientData;
+
+    // Nostalgia Commander: a reference to the control's m_scriptCancellable,
+    // which outlives the control.
+    GCancellable* cancellable = nullptr;
 };
 
 extern "C"
@@ -1792,6 +1806,15 @@ static void wxgtk_run_javascript_cb(GObject *,
                                     void *user_data)
 {
     wxWebKitRunScriptParams* params = static_cast<wxWebKitRunScriptParams*>(user_data);
+
+    // Nostalgia Commander: cancelled means the control was destroyed while
+    // the script ran, and webKitCtrl points at nothing.
+    if ( g_cancellable_is_cancelled(params->cancellable) )
+    {
+        delete params;
+        return;
+    }
+
     params->webKitCtrl->ProcessJavaScriptResult(res, params);
 }
 
@@ -1839,10 +1862,15 @@ void wxWebViewWebKit::RunScriptAsync(const wxString& javascript, void* clientDat
     params->webKitCtrl = this;
     params->clientData = clientData;
 
+    // Nostalgia Commander: see m_scriptCancellable.
+    if ( !m_scriptCancellable )
+        m_scriptCancellable = g_cancellable_new();
+    params->cancellable = G_CANCELLABLE(g_object_ref(m_scriptCancellable));
+
     wxGCC_WARNING_SUPPRESS(deprecated-declarations)
     webkit_web_view_run_javascript(m_web_view,
                                    wrapJS.GetWrappedCode().utf8_str(),
-                                   nullptr,
+                                   params->cancellable,
                                    wxgtk_run_javascript_cb,
                                    params);
     wxGCC_WARNING_RESTORE(deprecated-declarations)
@@ -1863,7 +1891,16 @@ bool wxWebViewWebKit::AddScriptMessageHandler(const wxString& name)
         wxString js = wxString::Format("window.%s = window.webkit.messageHandlers.%s;",
                 name, name);
         AddUserScript(js);
-        RunScript(js);
+
+        // Nostalgia Commander: run in the page already loaded, if there is
+        // one, without waiting for it or hearing back. RunScript() waited in a
+        // nested event loop, where anything at all could happen, the control
+        // and the window making it destroyed under the caller included; and
+        // RunScriptAsync() would report a result nobody asked for.
+        wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+        webkit_web_view_run_javascript(m_web_view, js.utf8_str(),
+                                       nullptr, nullptr, nullptr);
+        wxGCC_WARNING_RESTORE(deprecated-declarations)
     }
 
     return res;

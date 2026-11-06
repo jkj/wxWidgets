@@ -681,7 +681,14 @@ void ScintillaWX::ClaimSelection() {
 #ifdef __WXGTK__
 #if wxUSE_CLIPBOARD
     // Put the selected text in the PRIMARY selection
-    if (!sel.Empty()) {
+    //
+    // Nostalgia Commander: only a selection made where the keyboard is. One
+    // made in a control without it is the program's, a find's match or a
+    // minimap following its editor, and claiming the PRIMARY selection for it
+    // clears the selection of the field that has the keyboard, as GTK clears
+    // an entry's when another takes it: a find box selected whole, so a key
+    // types over it, is left with a caret.
+    if (!sel.Empty() && hasFocus) {
         SelectionText st;
         CopySelectionRange(&st);
         wxTheClipboard->UsePrimarySelection(true);
